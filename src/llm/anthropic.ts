@@ -24,7 +24,7 @@ export class AnthropicAdapter implements LlmAdapter {
    */
   constructor(opts?: { apiKey?: string; model?: string; maxTokens?: number }) {
     this.apiKey = opts?.apiKey ?? process.env.ANTHROPIC_API_KEY ?? "";
-    this.model = opts?.model ?? process.env.ANTHROPIC_MODEL ?? "claude-sonnet-4-5";
+    this.model = opts?.model ?? process.env.ANTHROPIC_MODEL ?? "claude-sonnet-5-5";
     this.maxTokens = opts?.maxTokens ?? 1024;
     if (!this.apiKey) {
       throw new Error(

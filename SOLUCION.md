@@ -71,7 +71,7 @@ El **contrato de herramienta** es `{ ok: true, data } | { ok: false, error }` co
 
 ## 4. Elección del modelo
 
-- **Proveedor:** Anthropic. **Modelo por defecto:** `claude-sonnet-4-5` (configurable
+- **Proveedor:** Anthropic. **Modelo por defecto:** `claude-sonnet-5-5` (configurable
   por `.env`). El adaptador (`src/llm/adapter.ts`) es una interfaz propia
   `enviar(system, mensajes, herramientas)`; cambiar de proveedor es implementar esa
   interfaz y registrarla en `src/llm/index.ts` — el ciclo del agente no cambia.

@@ -8,8 +8,8 @@
   },
   "scripts": {
     "demo": "tsx demo.ts",
-    "server": "tsx src/server.ts",
-    "start": "npm run build:web && tsx src/server.ts",
+    "server": "node --env-file-if-exists=.env --import tsx src/server.ts",
+    "start": "npm run build:web && node --env-file-if-exists=.env --import tsx src/server.ts",
     "dev": "concurrently -k -n server,web -c blue,green \"npm:server\" \"npm:web\"",
     "web": "vite --config web/vite.config.ts",
     "build:web": "vite build --config web/vite.config.ts",

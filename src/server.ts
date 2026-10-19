@@ -115,7 +115,7 @@ const server = http.createServer(async (req, res) => {
     const provider = (process.env.LLM_PROVIDER ?? "anthropic").toLowerCase();
     const model =
       provider === "anthropic"
-        ? process.env.ANTHROPIC_MODEL ?? "claude-sonnet-4-5"
+        ? process.env.ANTHROPIC_MODEL ?? "claude-sonnet-5-5"
         : "desconocido";
     enviarJson(res, 200, { ok: true, provider, model, keyConfigurada: Boolean(process.env.ANTHROPIC_API_KEY) });
     return;

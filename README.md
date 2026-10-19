@@ -36,7 +36,7 @@ npm run server           # el backend sirve el front en http://localhost:8787
 |---|---|
 | `LLM_PROVIDER` | Proveedor del adaptador (`anthropic`). |
 | `ANTHROPIC_API_KEY` | **Tu** clave. Solo backend. |
-| `ANTHROPIC_MODEL` | Modelo (por defecto `claude-sonnet-4-5`). |
+| `ANTHROPIC_MODEL` | Modelo (por defecto `claude-sonnet-5-5`). |
 | `AGENT_MAX_ITERS` | Tope de iteraciones herramienta→modelo por turno (25). |
 | `AGENT_MAX_TOKENS_SESSION` | Tope de tokens por sesión (control de costo). |
 | `PORT` | Puerto del backend (8787). |
