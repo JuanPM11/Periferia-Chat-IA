@@ -159,14 +159,35 @@ const server = http.createServer(async (req, res) => {
       const sesion = sesiones.get(sessionId) ?? { mensajes: [], tokens: 0 };
       const ctx: ToolCtx = { directory: PROJECT_ROOT, sessionId };
 
-      const turno = await ejecutarTurno({
-        adapter,
-        system,
-        ctx,
-        historial: sesion.mensajes,
-        userMessage: message,
-        tokensPreviosSesion: sesion.tokens,
-      });
+      // Cancelación: si el cliente cierra la conexión (pulsó "Cancelar"), se aborta
+      // el ciclo del agente y la llamada en curso al proveedor LLM → corta el consumo.
+      const abort = new AbortController();
+      let cancelado = false;
+      const onClose = () => {
+        if (!res.writableEnded) {
+          cancelado = true;
+          abort.abort();
+        }
+      };
+      req.on("close", onClose);
+
+      let turno;
+      try {
+        turno = await ejecutarTurno({
+          adapter,
+          system,
+          ctx,
+          historial: sesion.mensajes,
+          userMessage: message,
+          tokensPreviosSesion: sesion.tokens,
+          signal: abort.signal,
+        });
+      } finally {
+        req.off("close", onClose);
+      }
+
+      // Si el cliente ya se fue, no intentamos responder.
+      if (cancelado || res.writableEnded) return;
 
       sesiones.set(sessionId, {
         mensajes: turno.mensajes,

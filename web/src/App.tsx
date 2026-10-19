@@ -63,6 +63,7 @@ export function App(): React.JSX.Element {
   const [sessionId] = useState(() => `s-${Date.now()}`);
   const [health, setHealth] = useState<{ provider: string; model: string; keyConfigurada: boolean } | null>(null);
   const finRef = useRef<HTMLDivElement>(null);
+  const abortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
     fetch("/api/health")
@@ -82,11 +83,14 @@ export function App(): React.JSX.Element {
     setMensajes((m) => [...m, { role: "user", text: msg }]);
     setInput("");
     setPensando(true);
+    const controller = new AbortController();
+    abortRef.current = controller;
     try {
       const r = await fetch("/api/chat", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ sessionId, message: msg }),
+        signal: controller.signal,
       });
       const data = await r.json();
       if (!data.ok) {
@@ -103,13 +107,27 @@ export function App(): React.JSX.Element {
         ]);
       }
     } catch (e) {
-      setMensajes((m) => [
-        ...m,
-        { role: "assistant", text: `⚠️ No se pudo contactar el backend: ${String(e)}` },
-      ]);
+      // Cancelación del usuario: el fetch se abortó a propósito.
+      if (e instanceof DOMException && e.name === "AbortError") {
+        setMensajes((m) => [
+          ...m,
+          { role: "assistant", text: "⏹️ Procesamiento cancelado. No se consumieron más tokens." },
+        ]);
+      } else {
+        setMensajes((m) => [
+          ...m,
+          { role: "assistant", text: `⚠️ No se pudo contactar el backend: ${String(e)}` },
+        ]);
+      }
     } finally {
       setPensando(false);
+      abortRef.current = null;
     }
+  }
+
+  /** Aborta la petición en curso: corta el consumo en el backend. */
+  function cancelar() {
+    abortRef.current?.abort();
   }
 
   return (
@@ -175,6 +193,9 @@ export function App(): React.JSX.Element {
                 <span></span>
                 <span></span>
                 <span></span> pensando…
+                <button type="button" className="cancelar-inline" onClick={cancelar}>
+                  Cancelar
+                </button>
               </div>
             </div>
           </div>
@@ -195,9 +216,15 @@ export function App(): React.JSX.Element {
             placeholder='Ej.: procesa sol-004 y no la crees hasta que confirme'
             disabled={pensando}
           />
-          <button type="submit" disabled={pensando || !input.trim()}>
-            Enviar
-          </button>
+          {pensando ? (
+            <button type="button" className="cancelar" onClick={cancelar}>
+              Cancelar
+            </button>
+          ) : (
+            <button type="submit" disabled={!input.trim()}>
+              Enviar
+            </button>
+          )}
         </form>
       </footer>
     </div>

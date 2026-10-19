@@ -53,6 +53,8 @@ export type EjecutarTurnoOpts = {
   maxIters?: number;
   maxTokensSesion?: number;
   tokensPreviosSesion?: number;
+  /** Señal para cancelar el turno (p. ej. el usuario pulsó "Cancelar"). */
+  signal?: AbortSignal;
 };
 
 /**
@@ -82,6 +84,7 @@ export async function ejecutarTurno(opts: EjecutarTurnoOpts): Promise<TurnoResul
     maxIters = Number(process.env.AGENT_MAX_ITERS ?? 25),
     maxTokensSesion = Number(process.env.AGENT_MAX_TOKENS_SESSION ?? 200_000),
     tokensPreviosSesion = 0,
+    signal,
   } = opts;
 
   const toolDefs = construirToolDefs(ocTools);
@@ -99,7 +102,22 @@ export async function ejecutarTurno(opts: EjecutarTurnoOpts): Promise<TurnoResul
   let reply = "";
 
   for (let iter = 0; iter < maxIters; iter++) {
-    const resp = await adapter.enviar(system, mensajes, toolDefs);
+    // Cancelación del usuario: no iniciamos otra llamada al modelo.
+    if (signal?.aborted) {
+      reply = "⏹️ Procesamiento cancelado por el usuario.";
+      break;
+    }
+
+    let resp;
+    try {
+      resp = await adapter.enviar(system, mensajes, toolDefs, signal);
+    } catch (e) {
+      if (signal?.aborted) {
+        reply = "⏹️ Procesamiento cancelado por el usuario.";
+        break;
+      }
+      throw e;
+    }
     usageTurno.input += resp.usage.input;
     usageTurno.output += resp.usage.output;
     tokensSesion += resp.usage.input + resp.usage.output;

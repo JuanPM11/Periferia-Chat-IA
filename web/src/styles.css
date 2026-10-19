@@ -162,3 +162,20 @@ footer button {
   cursor: pointer;
 }
 footer button:disabled { opacity: 0.5; cursor: not-allowed; }
+footer button.cancelar {
+  background: var(--err);
+  color: #fff;
+}
+footer button.cancelar:hover { filter: brightness(1.1); }
+
+.cancelar-inline {
+  margin-left: 10px;
+  background: transparent;
+  border: 1px solid var(--err);
+  color: var(--err);
+  padding: 2px 10px;
+  border-radius: 8px;
+  font-size: 12px;
+  cursor: pointer;
+}
+.cancelar-inline:hover { background: rgba(248, 81, 73, 0.12); }

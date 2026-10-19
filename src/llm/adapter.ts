@@ -30,11 +30,13 @@ export interface LlmAdapter {
    * @param system        System prompt (comportamiento + conocimiento).
    * @param mensajes      Historial de la conversación (texto, tool_use, tool_result).
    * @param herramientas  Definiciones de herramientas que el modelo puede invocar.
+   * @param signal        Señal opcional para cancelar la llamada en curso (aborta el fetch).
    * @returns             Bloques de contenido, motivo de parada y uso de tokens.
    */
   enviar(
     system: string,
     mensajes: LlmMessage[],
     herramientas: LlmToolDef[],
+    signal?: AbortSignal,
   ): Promise<LlmResponse>;
 }

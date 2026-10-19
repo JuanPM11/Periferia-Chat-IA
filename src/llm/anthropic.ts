@@ -42,9 +42,16 @@ export class AnthropicAdapter implements LlmAdapter {
     system: string,
     mensajes: LlmMessage[],
     herramientas: LlmToolDef[],
+    signal?: AbortSignal,
   ): Promise<LlmResponse> {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 60_000);
+    // Enlaza la señal externa de cancelación (del usuario) con este fetch.
+    const onAbortExterno = () => controller.abort();
+    if (signal) {
+      if (signal.aborted) controller.abort();
+      else signal.addEventListener("abort", onAbortExterno, { once: true });
+    }
     try {
       const res = await fetch(API_URL, {
         method: "POST",
@@ -84,11 +91,14 @@ export class AnthropicAdapter implements LlmAdapter {
       };
     } catch (e) {
       if (e instanceof Error && e.name === "AbortError") {
+        // Diferencia cancelación del usuario vs. timeout del proveedor.
+        if (signal?.aborted) throw new Error("Procesamiento cancelado por el usuario.");
         throw new Error("El proveedor LLM no respondió a tiempo (timeout de 60s).");
       }
       throw e;
     } finally {
       clearTimeout(timeout);
+      if (signal) signal.removeEventListener("abort", onAbortExterno);
     }
   }
 }
