@@ -16,6 +16,12 @@ export class AnthropicAdapter implements LlmAdapter {
   private readonly apiKey: string;
   private readonly maxTokens: number;
 
+  /**
+   * @param opts.apiKey     Clave; por defecto ANTHROPIC_API_KEY del entorno.
+   * @param opts.model      Modelo; por defecto ANTHROPIC_MODEL o claude-sonnet-4-5.
+   * @param opts.maxTokens  Tope de tokens de salida por llamada.
+   * @throws                Si no hay API key (se exige en el entorno del backend).
+   */
   constructor(opts?: { apiKey?: string; model?: string; maxTokens?: number }) {
     this.apiKey = opts?.apiKey ?? process.env.ANTHROPIC_API_KEY ?? "";
     this.model = opts?.model ?? process.env.ANTHROPIC_MODEL ?? "claude-sonnet-4-5";
@@ -27,6 +33,11 @@ export class AnthropicAdapter implements LlmAdapter {
     }
   }
 
+  /**
+   * Implementa `LlmAdapter.enviar` contra la API de mensajes de Anthropic.
+   * Aplica un timeout de 60s y traduce la respuesta al formato neutro del adaptador.
+   * @throws  Mensaje claro si la API responde error o hay timeout.
+   */
   async enviar(
     system: string,
     mensajes: LlmMessage[],

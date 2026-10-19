@@ -18,7 +18,12 @@ export type TurnoResultado = {
   usage: { input: number; output: number };
 };
 
-/** Convierte las herramientas (args zod) al formato de tool del proveedor. */
+/**
+ * Convierte las herramientas (cuyos args son esquemas zod) al formato de tool que
+ * entiende el proveedor LLM, generando el JSON Schema de cada una.
+ * @param toolset  Mapa nombre→herramienta (ej. `oc_crear`).
+ * @returns        Lista de definiciones `{ name, description, input_schema }`.
+ */
 export function construirToolDefs(toolset: Record<string, Tool>): LlmToolDef[] {
   return Object.entries(toolset).map(([nombre, tool]) => {
     const schema = zodToJsonSchema(z.object(tool.args), { $refStrategy: "none" });
@@ -30,6 +35,7 @@ export function construirToolDefs(toolset: Record<string, Tool>): LlmToolDef[] {
   });
 }
 
+/** Extrae y concatena solo los bloques de texto de una respuesta del modelo. */
 function textoDe(content: LlmContentBlock[]): string {
   return content
     .filter((b): b is Extract<LlmContentBlock, { type: "text" }> => b.type === "text")
@@ -50,9 +56,22 @@ export type EjecutarTurnoOpts = {
 };
 
 /**
- * Ejecuta un turno del agente: añade el mensaje del usuario, itera
- * (modelo → herramientas → modelo) hasta que el modelo deja de pedir herramientas
- * o se alcanza el tope de iteraciones (CA1).
+ * Ejecuta un turno completo del agente.
+ *
+ * Añade el mensaje del usuario y repite modelo → herramientas → modelo hasta que el
+ * modelo deja de pedir herramientas o se alcanza el tope de iteraciones (CA1) o de
+ * tokens de sesión. Ejecuta las herramientas solicitadas, adjunta sus resultados,
+ * registra cada llamada y decide si el turno quedó a la espera de confirmación.
+ *
+ * @param opts.adapter               Adaptador LLM a usar.
+ * @param opts.system                System prompt.
+ * @param opts.ctx                   Contexto de herramientas `{ directory, sessionId }`.
+ * @param opts.historial             Mensajes previos de la sesión.
+ * @param opts.userMessage           Mensaje nuevo del usuario.
+ * @param opts.maxIters              Tope de iteraciones por turno (def. AGENT_MAX_ITERS).
+ * @param opts.maxTokensSesion       Tope de tokens por sesión (def. AGENT_MAX_TOKENS_SESSION).
+ * @param opts.tokensPreviosSesion   Tokens ya consumidos en la sesión.
+ * @returns  `{ reply, toolCalls, needsConfirmation, mensajes, usage }`.
  */
 export async function ejecutarTurno(opts: EjecutarTurnoOpts): Promise<TurnoResultado> {
   const {

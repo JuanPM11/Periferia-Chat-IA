@@ -13,11 +13,17 @@ import {
 import { casoDir, maestrosDir } from "./paths.js";
 import { normalizarNit, parsearMontoCOP, soloFecha } from "./text.js";
 
+/** Lee y parsea un archivo JSON. Lanza si no existe o es inválido (lo captura el caller). */
 function leerJson(ruta: string): unknown {
   const txt = fs.readFileSync(ruta, "utf8");
   return JSON.parse(txt);
 }
 
+/**
+ * Carga y valida (con zod) los cuatro maestros de referencia.
+ * @param directory  Raíz del proyecto.
+ * @returns          Los maestros tipados; lanza si algún archivo no cumple el esquema.
+ */
 export function cargarMaestros(directory: string): Maestros {
   const dir = maestrosDir(directory);
   return {
@@ -36,7 +42,12 @@ export function cargarMaestros(directory: string): Maestros {
   };
 }
 
-/** Extrae campos estructurados del texto libre de la cotización. */
+/**
+ * Convierte el texto libre de una cotización en campos estructurados.
+ * Extrae proveedor, NIT (normalizado), total "IVA incluido", moneda y referencia.
+ * @param texto  Contenido de cotizacion.txt.
+ * @returns      Objeto cotización (con `ref` auxiliar) listo para el Paquete.
+ */
 function parsearCotizacion(texto: string): Paquete["cotizacion"] {
   const proveedor =
     texto.match(/Proveedor:\s*(.+)/i)?.[1]?.trim() ?? "";
@@ -59,7 +70,12 @@ function parsearCotizacion(texto: string): Paquete["cotizacion"] {
   } as Paquete["cotizacion"] & { ref?: string };
 }
 
-/** Extrae campos de la factura (solo caso retroactivo). */
+/**
+ * Convierte el texto libre de una factura en campos estructurados.
+ * Solo aparece en el caso retroactivo (sol-005). Extrae número, fecha y total.
+ * @param texto  Contenido de factura.txt.
+ * @returns      Objeto factura para el Paquete.
+ */
 function parsearFactura(texto: string): Paquete["factura"] {
   const numero =
     texto.match(/No\.?\s*([A-Z0-9\-]+)/i)?.[1] ??
@@ -83,8 +99,16 @@ export type CargaPaquete = {
 };
 
 /**
- * Lee la carpeta de un caso y la normaliza al Paquete de la sección 7.2.
- * Un adjunto ausente queda como null (no lanza).
+ * Lee la carpeta de un caso y la normaliza al Paquete de la sección 7.2 del PRD.
+ *
+ * Contrato:
+ * - Un adjunto ausente (cotización, factura) queda como `null`, no lanza.
+ * - La aprobación marca `aprobado` según contenga o no la palabra "Aprobado".
+ * - Valida el resultado con `PaqueteSchema` (zod).
+ * @param directory  Raíz del proyecto.
+ * @param caso       Carpeta del caso (ej. "sol-001").
+ * @returns          `{ paquete, cotizacionRef }`.
+ * @throws           Si el caso no existe o la solicitud no cumple el esquema.
  */
 export function cargarPaquete(directory: string, caso: string): CargaPaquete {
   const dir = casoDir(directory, caso);

@@ -9,7 +9,15 @@ import {
 import { resolverProveedor, resolverCentro, resolverAprobador } from "./resolver.js";
 import { compararFechas, soloFecha } from "./text.js";
 
-/** Deriva la unidad de medida a partir de la descripción (determinista). */
+/**
+ * Deriva la unidad de medida SAP de una posición a partir de la descripción.
+ * Heurística conservadora y determinista:
+ * - "H"   si menciona "hora(s)" como cantidad (ej. "100 horas").
+ * - "MES" solo si la cantidad es mensual real ("mensual", "por mes", "meses de servicio").
+ * - "UN"  en cualquier otro caso (incluye "12 meses" de vigencia de un producto contado en unidades).
+ * @param descripcion  Descripción de la solicitud.
+ * @returns            Código de unidad válido para el payload.
+ */
 export function derivarUnidad(descripcion: string): "UN" | "H" | "MES" {
   const d = descripcion.toLowerCase();
   // "horas" como unidad de la cantidad (ej. "100 horas de arquitectura")
@@ -23,8 +31,19 @@ export function derivarUnidad(descripcion: string): "UN" | "H" | "MES" {
 }
 
 /**
- * Aplica las reglas de control RC1–RC10 (sección 7.3 del PRD).
- * No lanza: devuelve siempre un ResultadoValidacion.
+ * Aplica toda la matriz de control RC1–RC10 (sección 7.3 del PRD) a un caso.
+ *
+ * Contrato del resultado:
+ * - `apta`            = no hay bloqueos (RC1–RC4, RC10).
+ * - `bloqueos[]`      = impiden crear la OC (proveedor, aprobador, tope, subárea, descuadre).
+ * - `confirmaciones[]`= permiten crear solo con confirmación humana (RC5, RC6, RC8, RC9).
+ * - `derivados`       = valores completados desde maestros (código SAP, IVA, condiciones, unidad).
+ * - `retroactiva`     = true si la factura es anterior a la solicitud (RC8).
+ *
+ * Es pura y determinista; no lee disco ni lanza (los errores de datos ya se
+ * resolvieron al cargar el paquete).
+ * @param maestros  Maestros de referencia cargados.
+ * @param paquete   Paquete normalizado del caso.
  */
 export function validar(
   maestros: Maestros,

@@ -12,6 +12,7 @@ import {
 import { resolverProveedor } from "./resolver.js";
 import { outCasoDir } from "./paths.js";
 
+/** Recorta un texto a `max` caracteres (SAP limita el texto breve de posición a 40). */
 function recortar(texto: string, max: number): string {
   return texto.length <= max ? texto : texto.slice(0, max);
 }
@@ -23,8 +24,19 @@ export type ConstruccionPayload = {
 };
 
 /**
- * Construye el payload de la OC (sección 7.4) y la trazabilidad fuente→valor.
- * Requiere los derivados calculados por `validar` y el sha256 de la evidencia.
+ * Construye el payload de la OC (sección 7.4), lo valida con zod y escribe la
+ * trazabilidad fuente→valor en `out/<caso>/trazabilidad.json`. No crea la OC.
+ *
+ * @param directory        Raíz del proyecto.
+ * @param caso             Carpeta del caso (ej. "sol-001").
+ * @param maestros         Maestros de referencia.
+ * @param paquete          Paquete normalizado del caso.
+ * @param validacion       Resultado de `validar` (aporta derivados y excepciones).
+ * @param evidenciaSha256  sha256 de la evidencia de aprobación (va en el payload).
+ * @param cotizacionRef    Referencia de la cotización, o null.
+ * @param confirmadoPor    Quién confirmó las excepciones (null si aún no se confirma).
+ * @returns                `{ payload, trazabilidad, rutaTrazabilidad }`.
+ * @throws                 Si no se resuelve el proveedor o el payload no cumple el esquema.
  */
 export function construirPayload(
   directory: string,
@@ -47,6 +59,7 @@ export function construirPayload(
   const moneda = (s.moneda === "USD" ? "USD" : "COP") as "COP" | "USD";
 
   const traza: Trazabilidad = {};
+  /** Registra en la trazabilidad de dónde salió cada valor del payload. */
   const set = (clave: string, valor: unknown, fuente: Trazabilidad[string]["fuente"]) => {
     traza[clave] = { valor, fuente };
   };

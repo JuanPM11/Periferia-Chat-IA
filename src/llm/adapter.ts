@@ -25,6 +25,13 @@ export type LlmResponse = {
 export interface LlmAdapter {
   readonly provider: string;
   readonly model: string;
+  /**
+   * Hace una llamada al modelo.
+   * @param system        System prompt (comportamiento + conocimiento).
+   * @param mensajes      Historial de la conversación (texto, tool_use, tool_result).
+   * @param herramientas  Definiciones de herramientas que el modelo puede invocar.
+   * @returns             Bloques de contenido, motivo de parada y uso de tokens.
+   */
   enviar(
     system: string,
     mensajes: LlmMessage[],

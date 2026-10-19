@@ -7,23 +7,33 @@ import { SapMock } from "../sap/mock.js";
 import { registrarControl, registrarLog } from "../core/control.js";
 import { ToolResult } from "../core/types.js";
 
+/** Contexto que recibe cada herramienta: raíz del proyecto y id de sesión. */
 export type ToolCtx = { directory: string; sessionId: string };
 
+/**
+ * Forma de una herramienta (contrato de la sección 6.2 del PRD):
+ * - `description`: una frase; es lo único que el modelo lee para decidir cuándo llamarla.
+ * - `args`: esquemas zod por campo (el backend valida antes de ejecutar).
+ * - `execute`: devuelve SIEMPRE un string JSON `{ ok,data }`|`{ ok,error }`; nunca lanza.
+ */
 export type Tool = {
   description: string;
   args: Record<string, z.ZodTypeAny>;
   execute(args: Record<string, unknown>, ctx: ToolCtx): Promise<string>;
 };
 
+/** Serializa un resultado exitoso de herramienta: `{ ok: true, data }` como string. */
 function ok<T>(data: T): string {
   return JSON.stringify({ ok: true, data } satisfies ToolResult<T>);
 }
+/** Serializa un error de herramienta: `{ ok: false, error }` como string (nunca lanza). */
 function err(error: string): string {
   return JSON.stringify({ ok: false, error } satisfies ToolResult<never>);
 }
 
 // ---------------------------------------------------------------------------
 // oc_leer_paquete (P0)
+// Entrada: { caso } · Salida: Paquete normalizado (7.2).
 // ---------------------------------------------------------------------------
 export const leer_paquete: Tool = {
   description:
@@ -54,6 +64,8 @@ export const leer_paquete: Tool = {
 
 // ---------------------------------------------------------------------------
 // oc_validar (P0)
+// Entrada: { caso, paquete? } · Salida: { apta, bloqueos, confirmaciones, derivados, retroactiva }.
+// Recarga el caso desde fixtures (no confía en el paquete que reenvía el modelo).
 // ---------------------------------------------------------------------------
 export const validar_oc: Tool = {
   description:
@@ -88,6 +100,8 @@ export const validar_oc: Tool = {
 
 // ---------------------------------------------------------------------------
 // oc_construir_payload (P0)
+// Entrada: { caso, paquete?, derivados? } · Salida: { payload, ruta_trazabilidad }.
+// Genera la evidencia para obtener el sha256 y escribe trazabilidad. No crea la OC.
 // ---------------------------------------------------------------------------
 export const construir_payload: Tool = {
   description:
@@ -130,6 +144,7 @@ export const construir_payload: Tool = {
 
 // ---------------------------------------------------------------------------
 // oc_generar_evidencia (P0 txt · P1 pdf)
+// Entrada: { caso } · Salida: { ruta, ruta_pdf, sha256 }.
 // ---------------------------------------------------------------------------
 export const generar_evidencia: Tool = {
   description:
@@ -159,6 +174,10 @@ export const generar_evidencia: Tool = {
 
 // ---------------------------------------------------------------------------
 // oc_crear (P0)
+// Entrada: { caso, payload?, confirmado? } · Salida: { numero_oc, fecha, idempotente, retroactiva }
+//          o { ok:false, error }.
+// Reglas: si hay bloqueos → no crea; si hay confirmaciones y !confirmado → no crea;
+//         idempotente por solicitud_id; registra el intento en control.csv.
 // ---------------------------------------------------------------------------
 export const crear: Tool = {
   description:

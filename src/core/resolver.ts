@@ -7,7 +7,12 @@ import {
 } from "./types.js";
 import { normalizarNit, normalizarNombre } from "./text.js";
 
-/** Resuelve el proveedor por NIT normalizado; si no hay NIT, por nombre normalizado. */
+/**
+ * Encuentra el proveedor de una solicitud en el maestro.
+ * Estrategia: primero por NIT normalizado; si la solicitud no trae NIT (sol-006),
+ * por nombre normalizado. No valida el estado `activo` (eso es RC1).
+ * @returns  El proveedor del maestro, o `null` si no hay coincidencia.
+ */
 export function resolverProveedor(
   maestros: Maestros,
   solicitud: Solicitud,
@@ -23,6 +28,10 @@ export function resolverProveedor(
   );
 }
 
+/**
+ * Busca un centro de costo por su código exacto.
+ * @returns  El centro, o `null` si no existe en el maestro.
+ */
 export function resolverCentro(
   maestros: Maestros,
   centroCosto: string,
@@ -30,7 +39,13 @@ export function resolverCentro(
   return maestros.centrosCosto.find((c) => c.centro_costo === centroCosto) ?? null;
 }
 
-/** Devuelve el aprobador (del centro) cuyo email coincide con el emisor de la aprobación. */
+/**
+ * Devuelve el aprobador de un centro cuyo email coincide con quien firmó la aprobación.
+ * Sirve a RC2 (autoridad) y RC3 (tope del aprobador).
+ * @param centro          Centro resuelto (o null).
+ * @param emailAprobador  Email del emisor del correo de aprobación.
+ * @returns               El aprobador autorizado, o `null` si no figura en el centro.
+ */
 export function resolverAprobador(
   centro: CentroCosto | null,
   emailAprobador: string | null | undefined,

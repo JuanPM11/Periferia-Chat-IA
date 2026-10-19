@@ -12,7 +12,10 @@ const PROJECT_ROOT = path.resolve(__dirname, "..");
 const PORT = Number(process.env.PORT ?? 8787);
 const ACCESS_KEY = process.env.ACCESS_KEY ?? "";
 
-// System prompt = comportamiento (prompt.md) + conocimiento del proceso.
+/**
+ * Arma el system prompt combinando comportamiento (agent/prompt.md) y
+ * conocimiento del proceso (src/knowledge/ordenes-compra.md).
+ */
 function cargarSystem(): string {
   const prompt = fs.readFileSync(path.join(PROJECT_ROOT, "agent", "prompt.md"), "utf8");
   const knowledge = fs.readFileSync(
@@ -25,6 +28,7 @@ function cargarSystem(): string {
 type Sesion = { mensajes: LlmMessage[]; tokens: number };
 const sesiones = new Map<string, Sesion>();
 
+/** Responde JSON con cabeceras CORS. @param code Código HTTP. @param body Cuerpo a serializar. */
 function enviarJson(res: http.ServerResponse, code: number, body: unknown): void {
   const txt = JSON.stringify(body);
   res.writeHead(code, {
@@ -36,6 +40,7 @@ function enviarJson(res: http.ServerResponse, code: number, body: unknown): void
   res.end(txt);
 }
 
+/** Acumula y devuelve el cuerpo crudo de una petición HTTP. */
 function leerBody(req: http.IncomingMessage): Promise<string> {
   return new Promise((resolve, reject) => {
     let data = "";
@@ -45,6 +50,10 @@ function leerBody(req: http.IncomingMessage): Promise<string> {
   });
 }
 
+/**
+ * Transforma una llamada a herramienta al formato que consume el front:
+ * separa `data` (éxito) de `error` para pintarla en el chat.
+ */
 function resumirToolCall(tc: {
   nombre: string;
   argumentos: Record<string, unknown>;
@@ -72,6 +81,10 @@ const MIME: Record<string, string> = {
   ".ico": "image/x-icon",
 };
 
+/**
+ * Sirve el front construido (web/dist) con fallback SPA a index.html.
+ * @returns  true si sirvió un archivo; false si no hay build (modo dev con Vite aparte).
+ */
 function servirEstatico(res: http.ServerResponse, urlPath: string): boolean {
   const distDir = path.join(PROJECT_ROOT, "web", "dist");
   if (!fs.existsSync(distDir)) return false;

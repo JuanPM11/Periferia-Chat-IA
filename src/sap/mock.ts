@@ -25,6 +25,7 @@ export class SapMock implements SapAdapter {
     this.ordenesPath = path.join(sapDir(directory), "ordenes.jsonl");
   }
 
+  /** Lee todas las órdenes persistidas en out/sap/ordenes.jsonl ([] si no existe). */
   private leerOrdenes(): FilaOrden[] {
     if (!fs.existsSync(this.ordenesPath)) return [];
     return fs
@@ -34,6 +35,10 @@ export class SapMock implements SapAdapter {
       .map((l) => JSON.parse(l) as FilaOrden);
   }
 
+  /**
+   * Consulta un proveedor por NIT (simula la consulta al maestro de SAP).
+   * @returns  `{ codigo_sap, activo }` o `null` si no existe.
+   */
   async consultarProveedor(
     nit: string,
   ): Promise<{ codigo_sap: string; activo: boolean } | null> {
@@ -42,6 +47,10 @@ export class SapMock implements SapAdapter {
     return p ? { codigo_sap: p.codigo_sap, activo: p.activo } : null;
   }
 
+  /**
+   * Busca si ya existe una OC para una solicitud (clave de idempotencia).
+   * @returns  `{ numero_oc }` si ya se creó, o `null`.
+   */
   async buscarOrdenPorReferencia(
     solicitud_id: string,
   ): Promise<{ numero_oc: string } | null> {
@@ -49,6 +58,12 @@ export class SapMock implements SapAdapter {
     return existente ? { numero_oc: existente.numero_oc } : null;
   }
 
+  /**
+   * Crea una OC con número secuencial desde 4500000001 y la persiste.
+   * Es idempotente: si ya hay OC para esa `solicitud_id`, devuelve la existente
+   * sin crear una segunda.
+   * @returns  `{ numero_oc, fecha }`.
+   */
   async crearOrden(orden: OrdenCompra): Promise<{ numero_oc: string; fecha: string }> {
     const ordenes = this.leerOrdenes();
     // Idempotencia: si ya existe una OC para esa solicitud, se devuelve la misma.

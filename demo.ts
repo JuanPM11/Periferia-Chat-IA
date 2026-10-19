@@ -15,6 +15,7 @@ const ctx: ToolCtx = { directory, sessionId: "demo" };
 type Parsed = { ok: true; data: any } | { ok: false; error: string };
 const parse = (s: string): Parsed => JSON.parse(s);
 
+/** Ejecuta una herramienta por nombre y parsea su resultado JSON. */
 async function call(nombre: keyof typeof tools, args: Record<string, unknown>): Promise<Parsed> {
   const tool = tools[nombre];
   if (!tool) throw new Error(`herramienta desconocida: ${nombre}`);
@@ -25,6 +26,11 @@ function linea(txt = ""): void {
   console.log(txt);
 }
 
+/**
+ * Procesa un caso imprimiendo validación y resultado de creación.
+ * @param caso           Carpeta del caso (ej. "sol-001").
+ * @param opts.confirmado Si true, llama a oc_crear con confirmado=true.
+ */
 async function procesar(caso: string, opts: { confirmado?: boolean } = {}): Promise<void> {
   linea("─".repeat(72));
   linea(`CASO ${caso}${opts.confirmado ? "  (con confirmación explícita)" : ""}`);

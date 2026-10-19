@@ -22,6 +22,10 @@ const EJEMPLOS = [
   "Procesa sol-005; si es retroactiva, avísame antes de crear.",
 ];
 
+/**
+ * Tarjeta plegable que muestra una llamada a herramienta (nombre, argumentos y
+ * resultado). Resalta en ámbar cuando la herramienta pide confirmación humana.
+ */
 function ToolCallCard({ tc }: { tc: ToolCall }) {
   const [abierto, setAbierto] = useState(false);
   const esConfirmacion = !tc.ok && /requiere confirmaci/i.test(tc.error ?? "");
@@ -48,6 +52,10 @@ function ToolCallCard({ tc }: { tc: ToolCall }) {
   );
 }
 
+/**
+ * Chat del agente: historial, indicador de "pensando", tool calls visibles y
+ * banner de confirmación. Mantiene un `sessionId` estable y consulta `/api/health`.
+ */
 export function App(): React.JSX.Element {
   const [mensajes, setMensajes] = useState<ChatMsg[]>([]);
   const [input, setInput] = useState("");
@@ -67,6 +75,7 @@ export function App(): React.JSX.Element {
     finRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [mensajes, pensando]);
 
+  /** Envía un mensaje al backend (/api/chat) y agrega la respuesta al historial. */
   async function enviar(texto: string) {
     const msg = texto.trim();
     if (!msg || pensando) return;
