@@ -1,0 +1,11 @@
+# Arranque local con un solo comando: docker compose up --build
+# Requiere un archivo .env con ANTHROPIC_API_KEY (ver .env.example).
+services:
+  agente:
+    build: .
+    ports:
+      - "8787:8787"
+    env_file:
+      - .env
+    environment:
+      PORT: "8787"
