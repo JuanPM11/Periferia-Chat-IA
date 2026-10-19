@@ -1,0 +1,12 @@
+import { OrdenCompra } from "../core/types.js";
+
+/** Contrato obligatorio (sección 7.4). La implementación real se diseña en SOLUCION.md. */
+export interface SapAdapter {
+  consultarProveedor(
+    nit: string,
+  ): Promise<{ codigo_sap: string; activo: boolean } | null>;
+  crearOrden(orden: OrdenCompra): Promise<{ numero_oc: string; fecha: string }>;
+  buscarOrdenPorReferencia(
+    solicitud_id: string,
+  ): Promise<{ numero_oc: string } | null>;
+}
