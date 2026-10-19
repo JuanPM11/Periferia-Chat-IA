@@ -86,5 +86,10 @@ modulo/                      BONUS: agente empaquetado reutilizable
 
 ## Link de prueba
 
-> _Pega aquí la URL pública cuando despliegues_ (ver `SOLUCION.md` §Despliegue).
-> Si usas `ACCESS_KEY`, indica aquí la clave de acceso.
+**App en vivo:** https://periferia-chat-ia.onrender.com
+
+Desplegada en Render (Docker) a partir de este repo. No requiere clave de acceso.
+
+> Nota: el plan gratuito de Render "duerme" tras ~15 min de inactividad; el primer
+> request tras la inactividad puede tardar ~50 s en despertar. Si está dormida,
+> recarga y espera unos segundos.

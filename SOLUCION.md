@@ -2,6 +2,13 @@
 
 > Perxia 2.0 · Periferia IT Group
 
+**App en vivo:** https://periferia-chat-ia.onrender.com ·
+**Repositorio:** https://github.com/JuanPM11/Periferia-Chat-IA ·
+**Modelo:** `claude-sonnet-5-5` (Anthropic)
+
+> Render free "duerme" tras ~15 min de inactividad; el primer request puede tardar
+> ~50 s en despertar.
+
 ---
 
 ## 1. Problema en una frase
