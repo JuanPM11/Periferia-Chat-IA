@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { cargarMaestros, cargarPaquete } from "../core/fixtures.js";
+import { cargarMaestros, cargarPaquete, listarCasos, resolverCaso } from "../core/fixtures.js";
 import { validar } from "../core/validate.js";
 import { construirPayload } from "../core/payload.js";
 import { generarEvidencia } from "../core/evidence.js";
@@ -21,6 +21,22 @@ export type Tool = {
   args: Record<string, z.ZodTypeAny>;
   execute(args: Record<string, unknown>, ctx: ToolCtx): Promise<string>;
 };
+
+/**
+ * Resuelve el `caso` que llega como argumento a una carpeta real.
+ * Devuelve `{ caso }` o `{ error }` (con la lista de casos disponibles).
+ */
+function resolverCasoOError(
+  directory: string,
+  raw: string,
+): { caso: string } | { error: string } {
+  const caso = resolverCaso(directory, raw);
+  if (caso) return { caso };
+  const casos = listarCasos(directory);
+  return {
+    error: `El caso "${raw}" no existe. Casos disponibles: ${casos.join(", ") || "(ninguno)"}.`,
+  };
+}
 
 /** Serializa un resultado exitoso de herramienta: `{ ok: true, data }` como string. */
 function ok<T>(data: T): string {
@@ -44,7 +60,9 @@ export const leer_paquete: Tool = {
       .describe("Nombre de la carpeta del caso en fixtures/reto-03/solicitudes/ (ej. sol-001)"),
   },
   async execute(args, ctx) {
-    const caso = String(args.caso ?? "");
+    const rc = resolverCasoOError(ctx.directory, String(args.caso ?? ""));
+    if ("error" in rc) return err(rc.error);
+    const caso = rc.caso;
     try {
       const { paquete } = cargarPaquete(ctx.directory, caso);
       registrarLog(ctx.directory, {
@@ -78,7 +96,9 @@ export const validar_oc: Tool = {
       .describe("Paquete devuelto por oc_leer_paquete (opcional; la herramienta recarga desde fixtures)"),
   },
   async execute(args, ctx) {
-    const caso = String(args.caso ?? "");
+    const rc = resolverCasoOError(ctx.directory, String(args.caso ?? ""));
+    if ("error" in rc) return err(rc.error);
+    const caso = rc.caso;
     try {
       const maestros = cargarMaestros(ctx.directory);
       const { paquete } = cargarPaquete(ctx.directory, caso);
@@ -112,7 +132,9 @@ export const construir_payload: Tool = {
     derivados: z.any().optional().describe("Derivados de oc_validar (opcional; se recalculan)"),
   },
   async execute(args, ctx) {
-    const caso = String(args.caso ?? "");
+    const rc = resolverCasoOError(ctx.directory, String(args.caso ?? ""));
+    if ("error" in rc) return err(rc.error);
+    const caso = rc.caso;
     try {
       const maestros = cargarMaestros(ctx.directory);
       const { paquete, cotizacionRef } = cargarPaquete(ctx.directory, caso);
@@ -153,7 +175,9 @@ export const generar_evidencia: Tool = {
     caso: z.string().describe("Carpeta del caso (ej. sol-001)"),
   },
   async execute(args, ctx) {
-    const caso = String(args.caso ?? "");
+    const rc = resolverCasoOError(ctx.directory, String(args.caso ?? ""));
+    if ("error" in rc) return err(rc.error);
+    const caso = rc.caso;
     try {
       const { paquete } = cargarPaquete(ctx.directory, caso);
       const ev = await generarEvidencia(ctx.directory, caso, paquete);
@@ -191,7 +215,9 @@ export const crear: Tool = {
       .describe("true cuando el analista confirmó explícitamente las excepciones del caso"),
   },
   async execute(args, ctx) {
-    const caso = String(args.caso ?? "");
+    const rc = resolverCasoOError(ctx.directory, String(args.caso ?? ""));
+    if ("error" in rc) return err(rc.error);
+    const caso = rc.caso;
     const confirmado = args.confirmado === true;
     try {
       const maestros = cargarMaestros(ctx.directory);
@@ -311,8 +337,33 @@ export const leer_excel: Tool = {
   },
 };
 
+// ---------------------------------------------------------------------------
+// oc_listar_casos
+// Entrada: {} · Salida: { casos: string[] }. Útil para saber qué casos existen.
+// ---------------------------------------------------------------------------
+export const listar_casos: Tool = {
+  description:
+    "Lista los casos (carpetas de solicitudes) disponibles en los fixtures. Úsala cuando el usuario pregunte qué casos hay o pida uno que no existe.",
+  args: {},
+  async execute(_args, ctx) {
+    try {
+      const casos = listarCasos(ctx.directory);
+      registrarLog(ctx.directory, {
+        herramienta: "oc_listar_casos",
+        ok: true,
+        resumen: `${casos.length} casos`,
+      });
+      return ok({ casos });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      return err(`No se pudieron listar los casos: ${msg}`);
+    }
+  },
+};
+
 // Registro de herramientas: el nombre que ve el modelo es oc_<clave>.
 export const tools: Record<string, Tool> = {
+  oc_listar_casos: listar_casos,
   oc_leer_paquete: leer_paquete,
   oc_validar: validar_oc,
   oc_construir_payload: construir_payload,

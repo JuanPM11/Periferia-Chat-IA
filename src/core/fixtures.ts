@@ -10,7 +10,7 @@ import {
   CondicionPagoSchema,
   SolicitudSchema,
 } from "./types.js";
-import { casoDir, maestrosDir } from "./paths.js";
+import { casoDir, maestrosDir, fixturesRoot } from "./paths.js";
 import { normalizarNit, parsearMontoCOP, soloFecha } from "./text.js";
 
 /** Lee y parsea un archivo JSON. Lanza si no existe o es inválido (lo captura el caller). */
@@ -24,6 +24,34 @@ function leerJson(ruta: string): unknown {
  * @param directory  Raíz del proyecto.
  * @returns          Los maestros tipados; lanza si algún archivo no cumple el esquema.
  */
+/** Lista las carpetas de casos disponibles en fixtures (ej. ["sol-001", …]). */
+export function listarCasos(directory: string): string[] {
+  const dir = path.join(fixturesRoot(directory), "solicitudes");
+  if (!fs.existsSync(dir)) return [];
+  return fs
+    .readdirSync(dir, { withFileTypes: true })
+    .filter((d) => d.isDirectory())
+    .map((d) => d.name)
+    .sort();
+}
+
+/**
+ * Resuelve lo que escribe el usuario a una carpeta de caso real.
+ * Acepta el nombre exacto ("sol-001") o un número suelto ("sol-1", "1") y lo
+ * normaliza con relleno de ceros a 3 dígitos. Devuelve null si no existe.
+ */
+export function resolverCaso(directory: string, entrada: string): string | null {
+  const casos = listarCasos(directory);
+  const raw = (entrada ?? "").trim();
+  if (casos.includes(raw)) return raw;
+  const m = raw.match(/(\d+)/);
+  if (m) {
+    const pad = "sol-" + String(parseInt(m[1]!, 10)).padStart(3, "0");
+    if (casos.includes(pad)) return pad;
+  }
+  return null;
+}
+
 export function cargarMaestros(directory: string): Maestros {
   const dir = maestrosDir(directory);
   return {
