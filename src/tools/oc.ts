@@ -140,7 +140,7 @@ export const construir_payload: Tool = {
       const { paquete, cotizacionRef } = cargarPaquete(ctx.directory, caso);
       const resultado = validar(maestros, paquete);
       const evidencia = await generarEvidencia(ctx.directory, caso, paquete);
-      const { payload, rutaTrazabilidad } = construirPayload(
+      const { payload, trazabilidad, rutaTrazabilidad } = construirPayload(
         ctx.directory,
         caso,
         maestros,
@@ -155,7 +155,7 @@ export const construir_payload: Tool = {
         ok: true,
         resumen: `payload ${payload.referencia.solicitud_id} construido`,
       });
-      return ok({ payload, ruta_trazabilidad: rutaTrazabilidad });
+      return ok({ payload, trazabilidad, ruta_trazabilidad: rutaTrazabilidad });
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       registrarLog(ctx.directory, { herramienta: "oc_construir_payload", caso, ok: false, resumen: msg });

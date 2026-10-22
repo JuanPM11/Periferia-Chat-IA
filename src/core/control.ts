@@ -53,6 +53,47 @@ export function registrarControl(directory: string, fila: FilaControl): void {
   fs.appendFileSync(ruta, linea + "\n", "utf8");
 }
 
+export type EstadoControl = {
+  solicitud_id: string;
+  resultado: FilaControl["resultado"];
+  numero_oc: string;
+  retroactiva: boolean;
+};
+
+/**
+ * Lee `out/control.csv` y devuelve el ÚLTIMO estado registrado por `solicitud_id`
+ * (la fila más reciente gana). Alimenta el panel de casos del front para saber
+ * qué solicitudes ya se procesaron y con qué resultado.
+ *
+ * Solo lee las 4 primeras columnas (solicitud_id, resultado, numero_oc,
+ * retroactiva), que nunca contienen comas, así que un split simple es seguro
+ * aunque las columnas de detalle vayan entrecomilladas.
+ * @param directory  Raíz del proyecto.
+ * @returns          Mapa `solicitud_id → estado` (vacío si no hay log todavía).
+ */
+export function leerControl(directory: string): Map<string, EstadoControl> {
+  const ruta = controlCsvPath(directory);
+  const mapa = new Map<string, EstadoControl>();
+  if (!fs.existsSync(ruta)) return mapa;
+  const lineas = fs
+    .readFileSync(ruta, "utf8")
+    .split("\n")
+    .slice(1) // salta el encabezado
+    .filter((l) => l.trim().length > 0);
+  for (const linea of lineas) {
+    const cols = linea.split(",");
+    const solicitud_id = cols[0];
+    if (!solicitud_id) continue;
+    mapa.set(solicitud_id, {
+      solicitud_id,
+      resultado: (cols[1] ?? "pendiente") as FilaControl["resultado"],
+      numero_oc: cols[2] ?? "",
+      retroactiva: cols[3] === "true",
+    });
+  }
+  return mapa;
+}
+
 /**
  * Agrega una línea al log técnico `out/log.jsonl` (una por llamada a herramienta).
  * @param entrada  `{ herramienta, caso?, ok, resumen }`; se le añade `ts`.

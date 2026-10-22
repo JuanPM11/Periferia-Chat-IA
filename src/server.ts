@@ -6,6 +6,10 @@ import { crearAdaptador } from "./llm/index.js";
 import { ejecutarTurno } from "./agent/loop.js";
 import { LlmMessage } from "./llm/adapter.js";
 import { ToolCtx } from "./tools/oc.js";
+import { listarCasos } from "./core/fixtures.js";
+import { casoDir } from "./core/paths.js";
+import { SolicitudSchema } from "./core/types.js";
+import { leerControl } from "./core/control.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PROJECT_ROOT = path.resolve(__dirname, "..");
@@ -130,6 +134,49 @@ const server = http.createServer(async (req, res) => {
     }
   }
 
+  // Lista de casos con su estado de procesamiento (para el panel del front):
+  // qué solicitudes ya se procesaron, con qué resultado y qué número de OC.
+  if (req.method === "GET" && pathname === "/api/casos") {
+    try {
+      const casos = listarCasos(PROJECT_ROOT);
+      const control = leerControl(PROJECT_ROOT);
+      const items = casos.map((caso) => {
+        let solicitud_id = caso;
+        let descripcion = "";
+        let valor_total = 0;
+        let moneda = "COP";
+        try {
+          const s = SolicitudSchema.parse(
+            JSON.parse(
+              fs.readFileSync(path.join(casoDir(PROJECT_ROOT, caso), "solicitud.json"), "utf8"),
+            ),
+          );
+          solicitud_id = s.solicitud_id;
+          descripcion = s.descripcion;
+          valor_total = s.valor_total;
+          moneda = s.moneda;
+        } catch {
+          // Si la solicitud no se puede leer, se devuelve el caso con datos mínimos.
+        }
+        const est = control.get(solicitud_id);
+        return {
+          caso,
+          solicitud_id,
+          descripcion,
+          valor_total,
+          moneda,
+          estado: est?.resultado ?? "sin_procesar",
+          numero_oc: est?.numero_oc || null,
+          retroactiva: est?.retroactiva ?? false,
+        };
+      });
+      enviarJson(res, 200, { ok: true, casos: items });
+    } catch (e) {
+      enviarJson(res, 500, { ok: false, error: e instanceof Error ? e.message : String(e) });
+    }
+    return;
+  }
+
   if (req.method === "GET" && pathname.startsWith("/api/sessions/")) {
     const id = decodeURIComponent(pathname.slice("/api/sessions/".length));
     const s = sesiones.get(id);
@@ -189,9 +236,10 @@ const server = http.createServer(async (req, res) => {
       // Si el cliente ya se fue, no intentamos responder.
       if (cancelado || res.writableEnded) return;
 
+      const tokensSesion = sesion.tokens + turno.usage.input + turno.usage.output;
       sesiones.set(sessionId, {
         mensajes: turno.mensajes,
-        tokens: sesion.tokens + turno.usage.input + turno.usage.output,
+        tokens: tokensSesion,
       });
 
       enviarJson(res, 200, {
@@ -201,6 +249,7 @@ const server = http.createServer(async (req, res) => {
         toolCalls: turno.toolCalls.map(resumirToolCall),
         needsConfirmation: turno.needsConfirmation,
         usage: turno.usage,
+        sessionTokens: tokensSesion,
       });
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
