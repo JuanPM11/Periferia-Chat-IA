@@ -5,6 +5,13 @@ aprobación), lo valida contra los maestros (RC1–RC10), construye el payload d
 OC, genera la evidencia de aprobación y crea la OC en un **SAP simulado**. Nunca
 crea nada con bloqueos ni con confirmaciones pendientes sin que el humano confirme.
 
+La interfaz incluye, además del chat con las llamadas a herramientas visibles:
+un **panel de solicitudes** con el estado de cada caso (sin procesar / OC creada /
+bloqueada / esperando confirmación) y el avance; el **payload en tabla** con un
+badge de fuente por valor (`maestro` / `solicitud` / `derivado`); una **tarjeta de
+OC creada** con el número; un **botón de confirmación** explícito; y un **contador
+de tokens** de la sesión.
+
 ## Requisitos
 
 - **Node 20+** (probado con Node 24). También corre con **Bun** (`bun install`,
@@ -80,7 +87,8 @@ modulo/                      BONUS: agente empaquetado reutilizable
 
 | Método | Ruta | Cuerpo / respuesta |
 |---|---|---|
-| `POST` | `/api/chat` | `{ sessionId, message }` → `{ reply, toolCalls[], needsConfirmation, usage }` |
+| `POST` | `/api/chat` | `{ sessionId, message }` → `{ reply, toolCalls[], needsConfirmation, usage, sessionTokens }` |
+| `GET` | `/api/casos` | Lista de casos con su estado de procesamiento (alimenta el panel) |
 | `GET` | `/api/sessions/:id` | Historial de la sesión |
 | `GET` | `/api/health` | `{ ok, provider, model, keyConfigurada }` (sin exponer la clave) |
 

@@ -25,15 +25,26 @@ retroactivas).
 ┌───────────────────────┐   HTTP/JSON   ┌───────────────────────────────────────────┐
 │  Front chat (React)   │ ────────────▶ │  Backend (Node http)                        │
 │  web/                 │ ◀──────────── │  src/server.ts                              │
-│  - historial          │               │   └─ ciclo del agente  src/agent/loop.ts    │
+│  - panel de casos     │               │   └─ ciclo del agente  src/agent/loop.ts    │
 │  - tool calls visibles│               │        prompt → modelo → herramientas → …   │
-│  - resalta confirmar  │               │   └─ adaptador LLM     src/llm/*            │
-└───────────────────────┘               │   └─ herramientas zod  src/tools/oc.ts      │
-                                         │   └─ núcleo determinista src/core/*         │
+│  - payload en tabla   │               │   └─ adaptador LLM     src/llm/*            │
+│  - resalta confirmar  │               │   └─ herramientas zod  src/tools/oc.ts      │
+└───────────────────────┘               │   └─ núcleo determinista src/core/*         │
                                          │   └─ SAP simulado      src/sap/mock.ts      │
                                          └───────┬──────────────────────┬──────────────┘
                                           fixtures/ (solo lectura)   out/ (escritura)
 ```
+
+**Experiencia de la analista (front).** Además del chat, la UI incluye un **panel
+de solicitudes** que lista los 6 casos con su estado de procesamiento
+(sin procesar / OC creada / bloqueada / esperando confirmación) y un contador de
+avance; se alimenta del endpoint `GET /api/casos`, que cruza los fixtures con
+`out/control.csv`. Cuando el agente construye el payload, el front lo muestra como
+**tabla legible con un badge de fuente por valor** (`maestro` / `solicitud` /
+`derivado`), haciendo visible la garantía CA2 (el dato no lo inventa el modelo); la
+creación exitosa se resalta con una **tarjeta de OC** (número + copiar) y la
+confirmación humana ofrece un **botón explícito** además del texto libre. El header
+muestra el **consumo de tokens de la sesión** (control de costo).
 
 **Separación por responsabilidad (lo que se evalúa):**
 
@@ -68,7 +79,8 @@ Implementado en `src/agent/loop.ts`:
    cuando `oc_validar` reporta `confirmaciones` y no hubo una creación exitosa en el
    turno, o cuando `oc_crear` responde `requiere confirmación`. El front resalta ese
    estado; `oc_crear` solo procede con `confirmado: true`, que el agente envía únicamente
-   si el mensaje siguiente del usuario confirma.
+   si el mensaje siguiente del usuario confirma. En el front esa confirmación se puede
+   dar con el botón **"Confirmar y crear OC"** o escribiéndola.
 7. Toda llamada a herramienta se devuelve al front (nombre, argumentos, resultado) y
    queda en `out/log.jsonl` (CA4). Los errores se muestran en lenguaje claro y la
    sesión no muere (CA5).
@@ -218,6 +230,7 @@ evidencia para tomarla y el control para hacerla cumplir.
 | HU-5 Crear en SAP | ✅ hecho | `oc_crear`, secuencial desde `4500000001`, idempotente, `control.csv`. |
 | HU-6 Errores | ✅ hecho | `{ ok:false, error }` legible; un caso malo no frena el resto. |
 | Bonus módulo | ✅ hecho | `modulo/` reutiliza el mismo prompt, tools y conocimiento. |
+| UI de apoyo | ✅ hecho | Panel de casos con estado (`/api/casos`), payload en tabla con badges de fuente, tarjeta de OC creada, botón de confirmación y contador de tokens. |
 | Front streaming | ⚪ parcial | Respuesta por turno (no token-a-token); suficiente para la demo. |
 
 **Para producción falta:** adaptador SAP real (OData), OCR para PDF/Excel binarios
